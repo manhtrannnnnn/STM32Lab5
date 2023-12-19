@@ -1,0 +1,142 @@
+/*
+ * command_parser.c
+ *
+ *  Created on: Dec 19, 2023
+ *      Author: ASUS TUF
+ */
+
+#include <command_parser.h>
+
+uint8_t temp = 0;
+uint8_t buffer[MAX_BUFFER_SIZE] = {0};
+uint8_t index_buffer = 0;
+uint8_t buffer_flag = 0;
+
+//int cmdFlag = 0;
+//int cmdState = 0;
+
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart){
+	if(huart->Instance == USART2 ){
+		buffer[index_buffer++]=temp;
+		if( index_buffer == 30) index_buffer = 0;
+		buffer_flag = 1;
+		HAL_UART_Receive_IT(&huart2, &temp, 1);
+	}
+}
+
+
+/*void command_parser_fsm(){
+	switch(cmdState){
+		case checkState:
+			if(buffer[index_buffer - 1]=='#' && buffer[index_buffer - 2] == 'T' && buffer[index_buffer - 3] == 'S' && buffer[index_buffer - 4] == 'R' && buffer[index_buffer] == '!'){
+				cmdState = RST;
+				HAL_UART_Transmit(&huart2, (void*)str, sprintf(str, "!RST#"), 1000);
+				cmdFlag = RSTFlag;
+			}
+			if(buffer[index_buffer - 1] == '#' && buffer[index_buffer - 2] == 'K' && buffer[index_buffer - 3] == 'O' && buffer[index_buffer - 4] == '!'){
+				cmdState = OK;
+				HAL_UART_Transmit(&huart2, (void*)str, sprintf(str, "!OK#"), 1000);
+				cmdFlag = OKFlag;
+			}
+			break;
+		case RST:
+			HAL_UART_Transmit(&huart2 , (void*) str , sprintf(str , "\r\n"), 1000);
+			cmdState = checkState;
+			break;
+		case OK:
+			HAL_UART_Transmit(&huart2 , (void*) str , sprintf(str , "\r\n"), 1000);
+			cmdState = checkState;
+			break;
+		default:
+			break;
+	}
+}*/
+
+int cmdState = CM_START;
+int cmdFlag = CM_INIT;
+
+void command_parser_fsm(){
+	switch(cmdState){
+	case CM_START:
+		if (buffer[index_buffer-1] == '!'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_FIRST;
+		}
+		break;
+	case CM_FIRST:
+		if (buffer[index_buffer-1] == '!'){
+			cmdState = CM_FIRST;
+		}
+		else if (buffer[index_buffer-1] == 'R' || buffer[index_buffer-1] == 'r'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_R;
+		}
+		else if (buffer[index_buffer-1] == 'O' || buffer[index_buffer-1] == 'o'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_O;
+		}
+		else cmdState = CM_START;
+		break;
+	case CM_R:
+		if (buffer[index_buffer-1] == 'R' || buffer[index_buffer-1] == 'r'){
+			cmdState = CM_R;
+		}
+		else if (buffer[index_buffer-1] == 'S' || buffer[index_buffer-1] == 's'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_S;
+		}
+		else cmdState = CM_START;
+		break;
+	case CM_S:
+		if (buffer[index_buffer-1] == 'S' || buffer[index_buffer-1] == 's'){
+			cmdState = CM_S;
+		}
+		else if (buffer[index_buffer-1] == 'T' || buffer[index_buffer-1] == 't'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_T;
+		}
+		else cmdState = CM_START;
+		break;
+	case CM_T:
+		if (buffer[index_buffer-1] == 'T' || buffer[index_buffer-1] == 't'){
+			cmdState = CM_T;
+		}
+		else if (buffer[index_buffer-1] == '#'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_RST_FINISHED;
+		}
+		else cmdState = CM_START;
+		break;
+	case CM_RST_FINISHED:
+		HAL_UART_Transmit(&huart2, (void *) str, sprintf(str, "\r\n"), 1000);
+		cmdFlag = RSTFlag;
+		cmdState = CM_START;
+		break;
+	case CM_O:
+		if (buffer[index_buffer-1] == 'O' || buffer[index_buffer-1] == 'o'){
+			cmdState = CM_O;
+		}
+		else if (buffer[index_buffer-1] == 'K' || buffer[index_buffer-1] == 'k'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_K;
+		}
+		else cmdState = CM_START;
+		break;
+	case CM_K:
+		if (buffer[index_buffer-1] == 'K' || buffer[index_buffer-1] == 'k'){
+			cmdState = CM_K;
+		}
+		else if (buffer[index_buffer-1] == '#'){
+			HAL_UART_Transmit(&huart2, &buffer[index_buffer-1], 1, 50);
+			cmdState = CM_OK_FINISHED;
+		}
+		else cmdState = CM_START;
+		break;
+	case CM_OK_FINISHED:
+		HAL_UART_Transmit(&huart2, (void *) str, sprintf(str, "\r\n"), 1000);
+		cmdFlag = OKFlag;
+		cmdState = CM_START;
+		break;
+	}
+}

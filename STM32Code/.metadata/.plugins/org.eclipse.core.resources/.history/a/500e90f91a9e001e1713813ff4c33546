@@ -1,0 +1,14 @@
+/*
+ * global.c
+ *
+ *  Created on: Dec 19, 2023
+ *      Author: ASUS TUF
+ */
+
+
+#include<global.h>
+
+uint8_t temp = 0;
+uint8_t buffer[MAX_BUFFER_SIZE] = {0};
+uint8_t index_buffer = 0;
+uint8_t buffer_flag = 0;

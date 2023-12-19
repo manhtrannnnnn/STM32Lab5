@@ -1,0 +1,16 @@
+/*
+ * uart.h
+ *
+ *  Created on: Dec 19, 2023
+ *      Author: ASUS TUF
+ */
+
+#ifndef INC_UART_H_
+#define INC_UART_H_
+#include <command_parser.h>
+#include <main.h>
+#include <software_timer.h>
+
+extern uint32_t ADC_value;
+
+#endif /* INC_UART_H_ */

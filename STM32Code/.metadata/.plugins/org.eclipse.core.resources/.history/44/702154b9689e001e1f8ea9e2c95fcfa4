@@ -1,0 +1,95 @@
+/*
+ * command_parser.c
+ *
+ *  Created on: Dec 19, 2023
+ *      Author: ASUS TUF
+ */
+
+#include <command_parser.h>
+
+uint8_t temp = 0;
+uint8_t buffer[MAX_BUFFER_SIZE] = {0};
+uint8_t index_buffer = 0;
+uint8_t buffer_flag = 0;
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef* huart){
+	if(huart->Instance == USART2 ){
+		buffer[index_buffer++]=temp;
+		if( index_buffer == 30) index_buffer = 0;
+		buffer_flag = 1;
+		HAL_UART_Receive_IT(&huart2, &temp, 1);
+	}
+}
+
+
+int cmdState = CM_START;
+int cmdFlag = CM_INIT;
+
+void command_parser_fsm() {
+    char currentChar = buffer[index_buffer-1];
+
+    switch(cmdState) {
+        case CM_START:
+            if (currentChar == '!') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_FIRST;
+            }
+            break;
+        case CM_FIRST:
+            if (currentChar == 'R') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_R;
+            }
+            else if (currentChar == 'O') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_O;
+            }
+            else cmdState = CM_START;
+            break;
+        case CM_R:
+            if (currentChar == 'S') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_S;
+            }
+            else cmdState = CM_START;
+            break;
+        case CM_S:
+            if (currentChar == 'T') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_T;
+            }
+            else cmdState = CM_START;
+            break;
+        case CM_T:
+            if (currentChar == '#') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_RST_FINISHED;
+            }
+            else cmdState = CM_START;
+            break;
+        case CM_RST_FINISHED:
+            HAL_UART_Transmit(&huart2, (void *) str, sprintf(str, "\r\n"), 1000);
+            cmdFlag = RSTFlag;
+            cmdState = CM_START;
+            break;
+        case CM_O:
+            if (currentChar == 'K') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_K;
+            }
+            else cmdState = CM_START;
+            break;
+        case CM_K:
+            if (currentChar == '#') {
+                HAL_UART_Transmit(&huart2, &currentChar, 1, 50);
+                cmdState = CM_OK_FINISHED;
+            }
+            else cmdState = CM_START;
+            break;
+        case CM_OK_FINISHED:
+            HAL_UART_Transmit(&huart2, (void *) str, sprintf(str, "\r\n"), 1000);
+            cmdFlag = OKFlag;
+            cmdState = CM_START;
+            break;
+    }
+}
